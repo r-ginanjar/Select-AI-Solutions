@@ -45,14 +45,14 @@ def upload_pdfs(files):
 
 def create_vector_index():
     # Drop vector index
-    drop_index_sql = f"""
+    drop_index_sql = """
         BEGIN
             DBMS_CLOUD_AI.DROP_VECTOR_INDEX(
-                index_name  => '{vector_index_name}',
+                index_name  => :ix,
                 include_data => TRUE,
-                force => TRUE,
-                        );
-        END
+                force => TRUE
+            );
+        END;
     """
    
     bucket_location = f"https://objectstorage.{region}.oraclecloud.com/n/{namespace}/b/{bucket}/o/"
@@ -70,7 +70,7 @@ def create_vector_index():
                 index_name  => :ix,
                 attributes  => :attr_json
             );
-        END
+        END;
     """
 
     # execute queries
@@ -83,7 +83,7 @@ def create_vector_index():
         wallet_password=db_pass
     ) as conn:
         with conn.cursor() as cursor:
-            cursor.execute(drop_index_sql)
+            cursor.execute(drop_index_sql, ix=vector_index_name)
             cursor.execute(create_index_sql, ix=vector_index_name, attr_json=attrs_json)
 
 
@@ -102,8 +102,29 @@ def handle_file(files):
     yield gr.update(value=status)
 
 
+def escape_for_sql(text):
+    return text.replace("'", "''")
+
 
 def chatbot_fn(message, history):
+    with oracledb.connect(
+        user=db_user,
+        password=db_pass,
+        dsn=db_cs,
+        config_dir=db_wallet_loc,
+        wallet_location=db_wallet_loc,
+        wallet_password=db_pass
+    ) as conn:
+        with conn.cursor() as cursor:
+        
+            cursor.callproc("DBMS_CLOUD_AI.SET_PROFILE", [ai_profile_name])
+            message = escape_for_sql(message)
+            select_ai_query = f"SELECT AI NARRATE '{message}'"
+            
+            cursor.execute(select_ai_query)
+            result = cursor.fetchone()
+            answer = result[0]
+
     return answer
 
 if __name__ == "__main__":

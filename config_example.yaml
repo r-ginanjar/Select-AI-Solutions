@@ -1,0 +1,7 @@
+bucket: <your-bucket-name>
+namespace: <your-bucket-namespace/tenancy>
+region: <your-bucket-region>
+vector-index-name: <your-target-vector-index-name>
+cred-name: <your-created-oci-credential-in-db>
+ai-profile-name: <your-created-ai-profile-in-db> # make sure the vector index name is similar
+

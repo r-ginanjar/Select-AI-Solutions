@@ -3,5 +3,10 @@ namespace: <your-bucket-namespace/tenancy>
 region: <your-bucket-region>
 vector-index-name: <your-target-vector-index-name>
 cred-name: <your-created-oci-credential-in-db>
-ai-profile-name: <your-created-ai-profile-in-db> # make sure the vector index name is similar
+docurag-ai-profile-name: <your-created-docurag-ai-profile-in-db> # make sure the vector index name is similar
+chatdb-ai-profile-name: <your-created-chatdb-ai-profile-in-db>
 
+db-user: <db-user> # admin preferred
+db-cs: <db-connection-string>
+db-pass: <db-pass>
+db-wallet-loc: <db-wallet-location>

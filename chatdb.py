@@ -33,7 +33,11 @@ def chatbot_fn(message, history):
             
             cursor.execute(select_ai_query)
             result = cursor.fetchone()
-            answer = result[0].read()
+            
+            if isinstance(result[0], str):
+                answer = result[0]
+            else:
+                answer = result[0].read()
 
     return answer
 

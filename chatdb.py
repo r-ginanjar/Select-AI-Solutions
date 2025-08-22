@@ -1,5 +1,6 @@
-import gradio as gr
 import yaml
+
+import gradio as gr
 import oracledb
 
 # Declare global variables
@@ -14,9 +15,11 @@ db_wallet_loc = data['db-wallet-loc']
 
 
 def escape_for_sql(text):
+    """Escape single quotes in SQL queries."""
     return text.replace("'", "''")
 
 def chatbot_fn(message, history):
+    """Process a chatbot message and return the response."""
     with oracledb.connect(
         user=db_user,
         password=db_pass,

@@ -1,10 +1,11 @@
-import gradio as gr
-import oci
-import yaml
-from pathlib import Path
-import oracledb
 import json
 import re
+from pathlib import Path
+
+import gradio as gr
+import oci
+import oracledb
+import yaml
 
 # Declare global variables
 with open('config.yaml', 'r') as file:
@@ -27,6 +28,7 @@ db_wallet_loc = data['db-wallet-loc']
 
 # Define functions
 def delete_pdfs_in_bucket():
+    """Delete all PDF files in the specified OCI bucket."""
     # list pdf files
     object_lists = object_storage_client.list_objects(namespace, bucket).data.objects
     pdf_files = [file.name for file in object_lists if file.name.endswith(".pdf")]
@@ -37,6 +39,7 @@ def delete_pdfs_in_bucket():
             object_storage_client.delete_object(namespace, bucket, pdf_file)
 
 def upload_pdfs(files):
+    """Upload PDF files to the specified OCI bucket."""
     for file in files:
         file = Path(file)
         file_name = file.name.replace(" ","_")
@@ -45,6 +48,7 @@ def upload_pdfs(files):
             object_storage_client.put_object(namespace, bucket, file_name, f)
 
 def create_vector_index():
+    """Create a vector index in the Oracle database."""
     # Drop vector index
     drop_index_sql = """
         BEGIN
@@ -89,7 +93,7 @@ def create_vector_index():
 
 
 def handle_file(files):
-    
+    """Handle file upload and processing."""
     status = "Uploading document(s) to OCI Object Storage..."
     yield gr.update(value=status)
     delete_pdfs_in_bucket()
@@ -104,10 +108,12 @@ def handle_file(files):
 
 
 def escape_for_sql(text):
+    """Escape single quotes in SQL queries."""
     return text.replace("'", "''")
 
 
 def reformat_sources(match):
+    """Reformat sources from JSON to a readable string format."""
     sources_json = match.group(1)
     try:
         sources = json.loads(sources_json)
@@ -119,6 +125,7 @@ def reformat_sources(match):
         return match.group(0)  # fallback if JSON parsing fails
 
 def chatbot_fn(message, history):
+    """Process a chatbot message and return the response."""
     with oracledb.connect(
         user=db_user,
         password=db_pass,

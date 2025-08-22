@@ -4,12 +4,14 @@ import yaml
 from pathlib import Path
 import oracledb
 import json
+import re
 
 # Declare global variables
 with open('config.yaml', 'r') as file:
     data = yaml.safe_load(file)
 
 config = oci.config.from_file()
+config['region'] = data['region']
 object_storage_client = oci.object_storage.ObjectStorageClient(config)
 
 namespace = data['namespace']
@@ -22,7 +24,6 @@ db_user = data['db-user']
 db_cs = data['db-cs']
 db_pass = data['db-pass']
 db_wallet_loc = data['db-wallet-loc']
-
 
 # Define functions
 def delete_pdfs_in_bucket():
@@ -38,7 +39,7 @@ def delete_pdfs_in_bucket():
 def upload_pdfs(files):
     for file in files:
         file = Path(file)
-        file_name = file.name
+        file_name = file.name.replace(" ","_")
     
         with open(file, 'rb') as f:
             object_storage_client.put_object(namespace, bucket, file_name, f)
@@ -106,6 +107,17 @@ def escape_for_sql(text):
     return text.replace("'", "''")
 
 
+def reformat_sources(match):
+    sources_json = match.group(1)
+    try:
+        sources = json.loads(sources_json)
+        formatted_sources = "Sources:\n"
+        for src in sources:
+            formatted_sources += f"* {src['source']}: {src['url']}\n"
+        return formatted_sources.strip()
+    except json.JSONDecodeError:
+        return match.group(0)  # fallback if JSON parsing fails
+
 def chatbot_fn(message, history):
     with oracledb.connect(
         user=db_user,
@@ -121,7 +133,34 @@ def chatbot_fn(message, history):
             message = escape_for_sql(message)
             select_ai_query = f"SELECT AI NARRATE '{message}'"
             
-            cursor.execute(select_ai_query)
+            try:            
+                cursor.execute(select_ai_query)
+            except Exception as e:
+                error_message = str(e)
+
+                cleaned = re.sub(
+                    r"^ORA-20000: Sorry, unfortunately.*?\n\n",  # match until the first double newlines
+                    "",
+                    error_message,
+                    flags=re.DOTALL
+                )
+
+                # Remove the ORA-06512 trailing part
+                cleaned = re.sub(
+                    r"\nORA-06512:.*$",  # match from first ORA-06512 until end
+                    "",
+                    cleaned,
+                    flags=re.DOTALL
+                )
+                
+                cleaned = re.sub(
+                    r"Sources:\s*(\[[\s\S]*\])",  # match JSON array after 'Sources:'
+                    lambda m: reformat_sources(m),
+                    cleaned
+                )
+
+                return cleaned.strip()
+
             result = cursor.fetchone()
             answer = result[0]
 
